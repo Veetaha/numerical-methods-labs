@@ -1,3 +1,6 @@
-mod f1;
+pub mod funcs;
+pub mod methods;
 
-pub use f1::F1;
+pub use funcs::{f1, f2};
+
+pub type Range = std::ops::RangeInclusive<f64>;

@@ -23,6 +23,8 @@ f1 = 5 + (x * t * t) * (sin(x) - t * t * cos(x) * sqrt(PI - cos(t)))
 
 ```
 x ** 2 + PI * log_10(13 * PI) = 5 * PI * sin(x) + 2 * x
+x ** 2 + PI * log_10(13 * PI) - 5 * PI * sin(x) - 2 * x
+f = x * (x - 2) + PI * (log_10(13 * PI) - 5 * sin(x))
 ```
 
 `x` resides in `(-inf, +inf)`
