@@ -1,20 +1,23 @@
 use crate::Range as Range;
+use crate::funcs::{Func};
 
-pub struct Chord<F: Fn(f64) -> f64> {
-    func: F,
+#[derive(Clone, Copy)]
+pub enum MutableEnd { Start, End }
+
+pub struct Chord<'a, F: Func> {
+    func: &'a F,
     epsilon: f64,
     range: Range,
     approach: f64,
-    move_mutable_end: fn(&mut Chord<F>)
+    mutable_end: MutableEnd
 }
 
-impl<F> Chord<F>
-where F: Fn(f64) -> f64 {
-    pub fn with_first_approach(func: F, range: Range, epsilon: f64) -> Self { 
+impl<'a, F: Func> Chord<'a, F> {
+    pub fn with_first_approach(func: &'a F, range: Range, epsilon: f64) -> Chord<'a, F> { 
         debug_assert!(range.start() < range.end());
 
-        let f_start = func(*range.start());
-        let f_end   = func(*range.end());
+        let f_start = func.func(*range.start());
+        let f_end   = func.func(*range.end());
 
         debug_assert!(
             f_start * f_end < 0.0, 
@@ -23,12 +26,12 @@ where F: Fn(f64) -> f64 {
         );
 
         let approach = Self::get_interpolated_with_fstart_fend(&range, f_start, f_end);
-        let f_approach = func(approach);
+        let f_approach = func.func(approach);
 
-        let move_mutable_end = if (f_start <= 0.0) == (f_approach <= 0.0) {
-            Self::move_left_end
+        let mutable_end = if (f_start <= 0.0) == (f_approach <= 0.0) {
+            MutableEnd::Start
         } else {
-            Self::move_right_end
+            MutableEnd::End
         };
 
 
@@ -36,20 +39,46 @@ where F: Fn(f64) -> f64 {
             range,
             func,
             approach,
-            move_mutable_end,
+            mutable_end,
             epsilon
         };
-        (newbie.move_mutable_end)(&mut newbie);
+        newbie.set_mutable_end(approach);
         newbie
     }
 
-    fn move_left_end(&mut self)  { self.range = self.approach..=*self.range.end(); }
-    fn move_right_end(&mut self) { self.range = *self.range.start()..=self.approach; }
+    #[inline] pub fn get_range(&self) -> &Range { &self.range }
+    #[inline] pub fn get_func(&self) -> &F { &self.func }
+    #[inline] pub fn get_epsilon(&self) -> f64 { self.epsilon }
+    #[inline] pub fn get_approach(&self) -> f64 { self.approach }
 
-    #[inline] 
-    pub fn get_range(&self) -> &Range { &self.range }
-    #[inline] 
-    pub fn get_approach(&self) -> f64 { self.approach }
+    #[inline] pub fn get_immutable_end_value(&self) -> f64 { 
+        match self.mutable_end {
+            MutableEnd::Start => *self.range.end(),
+            MutableEnd::End   => *self.range.start()
+        }
+    }
+
+    pub fn make_approach(&mut self) {
+        self.approach = self.get_interpolated();
+
+        self.set_mutable_end(self.approach);
+    }
+
+    #[inline]
+    pub(super) fn set_mutable_end(&mut self, value: f64) { 
+        self.range = match self.mutable_end {
+            MutableEnd::Start => value..=*self.range.end(),
+            MutableEnd::End   => *self.range.start()..=value
+        };
+    }
+
+    #[inline]
+    pub(super) fn set_immutable_end(&mut self, value: f64) {
+        self.range = match self.mutable_end {
+            MutableEnd::Start => *self.range.start()..=value,
+            MutableEnd::End   => value..=*self.range.end()
+        };
+    }
 
     #[inline]
     fn get_interpolated_with_fstart_fend(range: &Range, f_a: f64, f_b: f64) -> f64 {
@@ -62,7 +91,9 @@ where F: Fn(f64) -> f64 {
     fn get_interpolated(&self) -> f64 {
         let Self { ref func, ref range, .. } = self;
 
-        Self::get_interpolated_with_fstart_fend(range, func(*range.start()), func(*range.end()))
+        Self::get_interpolated_with_fstart_fend(
+            range, func.func(*range.start()), func.func(*range.end())
+        )
     }
 
 }
@@ -72,19 +103,14 @@ pub struct ChordIterationResult {
     pub range: Range
 }
 
-impl<F> Iterator for Chord<F>
-where 
-    F: Fn(f64) -> f64 
-{
+impl<F: Func> Iterator for Chord<'_, F> {
     type Item = ChordIterationResult;
 
     fn next(&mut self) -> Option<Self::Item> {
 
         let prev_approach = self.approach;
 
-        self.approach = self.get_interpolated();
-
-        (self.move_mutable_end)(self);
+        self.make_approach();
         
         if (prev_approach - self.approach).abs() <= self.epsilon {
             None
@@ -95,7 +121,6 @@ where
             })
         }
     }
-
 
 }
 
