@@ -48,6 +48,8 @@ where F: Fn(f64) -> f64 {
 
     #[inline] 
     pub fn get_range(&self) -> &Range { &self.range }
+    #[inline] 
+    pub fn get_approach(&self) -> f64 { self.approach }
 
     #[inline]
     fn get_interpolated_with_fstart_fend(range: &Range, f_a: f64, f_b: f64) -> f64 {
