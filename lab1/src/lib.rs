@@ -1,6 +1,6 @@
 pub mod funcs;
 pub mod methods;
+pub mod range;
 
 pub use funcs::*;
-
-pub type Range = std::ops::RangeInclusive<f64>;
+pub use range::*;

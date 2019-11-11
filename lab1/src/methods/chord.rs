@@ -1,126 +1,107 @@
+mod mut_end;
+
+use std::fmt;
+
+use mut_end::MutEnd;
 use crate::Range as Range;
 use crate::funcs::{Func};
 
-#[derive(Clone, Copy)]
-pub enum MutableEnd { Start, End }
 
 pub struct Chord<'a, F: Func> {
     func: &'a F,
-    epsilon: f64,
     range: Range,
-    approach: f64,
-    mutable_end: MutableEnd
+    mut_end: &'a MutEnd<'a, F>
 }
 
 impl<'a, F: Func> Chord<'a, F> {
-    pub fn with_first_approach(func: &'a F, range: Range, epsilon: f64) -> Chord<'a, F> { 
-        debug_assert!(range.start() < range.end());
+    pub(super) fn get_a(&self) -> f64 { self.range.a }
+    pub(super) fn get_b(&self) -> f64 { self.range.b }
 
-        let f_start = func.func(*range.start());
-        let f_end   = func.func(*range.end());
+    pub(super) fn set_a(&mut self, value: f64) { self.range.a = value }
+    pub(super) fn set_b(&mut self, value: f64) { self.range.b = value }
 
-        debug_assert!(
-            f_start * f_end < 0.0, 
-            "f_start: {}, f_end: {}, start: {}, end: {},",
-            f_start, f_end, *range.start(), *range.end()
+    pub fn with_first_approach(func: &'a F, Range { a, b }: Range) -> Chord<'a, F> { 
+        assert!(a < b);
+
+        let f_a = func.func(a);
+        let f_b = func.func(b);
+
+        assert!(
+            f_a * f_b < 0.0, 
+            "Function doesn't cross OX axis at the given range: \
+            f_a: {}, f_b: {}, a: {}, b: {}",
+            f_a, f_b, a, b
         );
 
-        let approach = Self::get_interpolated_with_fstart_fend(&range, f_start, f_end);
+        let approach = Self::get_interpolated_with_fstart_fend(Range { a, b }, f_a, f_b);
         let f_approach = func.func(approach);
 
-        let mutable_end = if (f_start <= 0.0) == (f_approach <= 0.0) {
-            MutableEnd::Start
+        let mut_end = if (f_a <= 0.0) == (f_approach <= 0.0) {
+            &MutEnd::A
         } else {
-            MutableEnd::End
-        };
-
+            &MutEnd::B
+        };       
+        // TODO:
+        // let s_ = mut_end as *const _ as usize;
+        // let a_ = &MutEnd::<'a, F>::A as *const _ as usize;
+        // let b_ = &MutEnd::<'a, F>::B as *const _ as usize;
 
         let mut newbie = Self {
-            range,
+            range: Range { a, b },
             func,
-            approach,
-            mutable_end,
-            epsilon
+            mut_end
         };
-        newbie.set_mutable_end(approach);
+        newbie.set_mut_end(approach);
         newbie
     }
 
     #[inline] pub fn get_range(&self) -> &Range { &self.range }
     #[inline] pub fn get_func(&self) -> &F { &self.func }
-    #[inline] pub fn get_epsilon(&self) -> f64 { self.epsilon }
-    #[inline] pub fn get_approach(&self) -> f64 { self.approach }
 
-    #[inline] pub fn get_immutable_end_value(&self) -> f64 { 
-        match self.mutable_end {
-            MutableEnd::Start => *self.range.end(),
-            MutableEnd::End   => *self.range.start()
-        }
-    }
+    #[inline] pub fn get_mut_end  (&self) -> f64 { (self.mut_end.get_mut)(self) }
+    #[inline] pub fn get_immut_end(&self) -> f64 { (self.mut_end.get_mut)(self) }
+    #[inline] pub fn set_mut_end  (&mut self, value: f64) { (self.mut_end.set_mut)(self, value) }
+    #[inline] pub fn set_immut_end(&mut self, value: f64) { (self.mut_end.set_mut)(self, value) }
+
+    #[inline] pub fn get_root(&self) -> f64 { self.range.mid() }
 
     pub fn make_approach(&mut self) {
-        self.approach = self.get_interpolated();
-
-        self.set_mutable_end(self.approach);
+        self.set_mut_end(self.get_interpolated());
     }
 
     #[inline]
-    pub(super) fn set_mutable_end(&mut self, value: f64) { 
-        self.range = match self.mutable_end {
-            MutableEnd::Start => value..=*self.range.end(),
-            MutableEnd::End   => *self.range.start()..=value
-        };
-    }
-
-    #[inline]
-    pub(super) fn set_immutable_end(&mut self, value: f64) {
-        self.range = match self.mutable_end {
-            MutableEnd::Start => *self.range.start()..=value,
-            MutableEnd::End   => value..=*self.range.end()
-        };
-    }
-
-    #[inline]
-    fn get_interpolated_with_fstart_fend(range: &Range, f_a: f64, f_b: f64) -> f64 {
-        let a = *range.start();
-        let b = *range.end();
+    fn get_interpolated_with_fstart_fend(Range {a, b}: Range, f_a: f64, f_b: f64) -> f64 {
         a - (f_a * (b - a)) / (f_b - f_a)
     }
 
     #[inline]
     fn get_interpolated(&self) -> f64 {
-        let Self { ref func, ref range, .. } = self;
+        let Self { func, range, .. } = self;
 
         Self::get_interpolated_with_fstart_fend(
-            range, func.func(*range.start()), func.func(*range.end())
+            *range, func.func(range.a), func.func(range.b)
+        )
+    }
+
+
+    pub fn next_heuristic(&mut self) -> f64 {
+        let prev_approach = self.get_mut_end();
+
+        self.make_approach();
+
+        (prev_approach - self.get_mut_end()).abs()
+    }
+
+}
+
+impl<'a, F: Func> fmt::Display for Chord<'a, F> {
+    
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "range: {range}, root: {root:.10}, mut_end: {mut_end}",
+            range = self.range,
+            root = self.get_root(),
+            mut_end = self.mut_end
         )
     }
 
 }
-
-pub struct ChordIterationResult {
-    pub approach: f64,
-    pub range: Range
-}
-
-impl<F: Func> Iterator for Chord<'_, F> {
-    type Item = ChordIterationResult;
-
-    fn next(&mut self) -> Option<Self::Item> {
-
-        let prev_approach = self.approach;
-
-        self.make_approach();
-        
-        if (prev_approach - self.approach).abs() <= self.epsilon {
-            None
-        } else {
-            Some(ChordIterationResult {
-                approach: self.approach,
-                range: self.range.clone()
-            })
-        }
-    }
-
-}
-

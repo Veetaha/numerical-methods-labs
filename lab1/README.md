@@ -31,3 +31,7 @@ f = x * (x - 2) + PI * (log_10(13 * PI) - 5 * sin(x))
 
 Chord method.
 Fixed-point iteration method.
+
+
+Fixed-point iteration:
+
