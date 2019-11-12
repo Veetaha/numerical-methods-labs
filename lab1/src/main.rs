@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use lab1::{*, funcs::{Func}};
+use lab1::*;
 
 const EPSILON: f64 = 1e-7;
 const F1_RANGES: [Range; 3] = [
@@ -13,15 +13,15 @@ const F2_RANGES: [Range; 2] = [
     Range { a: 2.0, b: 4.0 }
 ];
 
-const F3_COEFS: [f64; 7] = [
-    -2.0  
-     71.0,
-    -171.0,
-    -589.0,
-     825.0,
-     772.0,
+const F3_COEFS: [f64; 8] = [
+    -3.0,
     -638.0,
-    -3.0
+     772.0,
+     825.0,
+    -589.0,
+    -171.0,
+     71.0,
+    -2.0
 ];
 
 fn main() {
@@ -33,6 +33,28 @@ fn main() {
 
     run_fixed_point_iteration(F2, EPSILON, F2_RANGES.iter().cloned());
     run_chords(F2, EPSILON, F2_RANGES.iter().cloned());
+
+    println!("Input to get results for f3");
+    let f3 = F3::new(Vec::from(&F3_COEFS as &[f64]));
+    run_lobachevsky(f3, 1e-3, EPSILON * 1e-2);
+}
+
+fn run_lobachevsky<F: AlgebraicFunc>(f: F, lob_epsilon: f64, epsilon: f64) {
+    let mut method = methods::Lobachevsky::new(&f);
+    let mut i = 0;
+    while {
+        method.next_quadration();
+        i += 1;
+        println!("[LOBACHEVSKY] {}", method);
+
+        !method.should_stop_iteration(lob_epsilon) && i < 1000 // prevent infinite loops
+    } {}
+
+    let roots: Vec<_> = method.calc_roots().collect();
+
+    println!("Lobachevsky roots approach: {:.8?}", roots);
+
+    run_chords(f, epsilon, roots.iter().map(|root| Range { a: root - lob_epsilon, b: root + lob_epsilon }))
 }
 
 fn run_fixed_point_iteration<F: Func + Derivative>(

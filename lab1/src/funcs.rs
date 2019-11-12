@@ -5,5 +5,5 @@ mod traits;
 
 pub use f1::*;
 pub use f2::*;
-// pub use f3::*;
+pub use f3::*;
 pub use traits::*;

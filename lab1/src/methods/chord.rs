@@ -63,7 +63,7 @@ impl<'a, F: Func> Chord<'a, F> {
     #[inline] pub fn set_mut_end  (&mut self, value: f64) { (self.mut_end.set_mut)(self, value) }
     #[inline] pub fn set_immut_end(&mut self, value: f64) { (self.mut_end.set_mut)(self, value) }
 
-    #[inline] pub fn get_root(&self) -> f64 { self.range.mid() }
+    #[inline] pub fn get_root(&self) -> f64 { self.get_mut_end() }
 
     pub fn make_approach(&mut self) {
         self.set_mut_end(self.get_interpolated());

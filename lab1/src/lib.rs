@@ -1,6 +1,8 @@
-pub mod funcs;
+mod funcs;
+mod range;
+mod coefs;
 pub mod methods;
-pub mod range;
 
 pub use funcs::*;
 pub use range::*;
+pub use coefs::*;
