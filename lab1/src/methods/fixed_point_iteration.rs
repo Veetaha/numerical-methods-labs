@@ -61,7 +61,7 @@ where
     F: Func + Derivative 
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "approach: {approach:.10}, lambda: {lambda:.10}, q: {q:.10}", 
+        write!(f, "approach: {approach:.10} lambda: {lambda:.10} q: {q:.10}", 
             approach = self.approach,
             lambda   = self.lambda,
             q        = self.q

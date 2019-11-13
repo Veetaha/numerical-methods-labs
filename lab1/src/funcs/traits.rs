@@ -3,7 +3,10 @@ pub trait Func {
 }
 
 pub trait Derivative {
-    fn derivative(&self, x: f64) -> f64;
+    fn derivative(&self, x: f64) -> f64 where Self: Func {
+        const DELTA_X: f64 = 1e-8;
+        (self.func(x + DELTA_X) - self.func(x)) / DELTA_X
+    }
 }
 
 

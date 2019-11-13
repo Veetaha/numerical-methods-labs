@@ -13,7 +13,7 @@ impl Func for F2 {
 }
 
 impl Derivative for F2 {
-    fn derivative(&self, x: f64) -> f64 {
-        2.0 * x - 2.0 - 5.0 * PI * x.cos()
-    }
+    // fn derivative(&self, x: f64) -> f64 {
+    //     2.0 * x - 2.0 - 5.0 * PI * x.cos()
+    // }
 }
